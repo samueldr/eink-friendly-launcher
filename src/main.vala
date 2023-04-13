@@ -5,6 +5,18 @@ namespace EinkFriendlyLauncher {
 	const int MINIMUM_ENTRIES = 1;
 	const string APP_ID = "com.samueldr.EinkFriendlyLauncher";
 
+	[DBus (name="com.samueldr.EinkFriendlyLauncher")]
+	class ApplicationService : Object {
+		private static GLib.Once<ApplicationService> _instance;
+		public static unowned ApplicationService instance {
+			get { return _instance.once(() => { return new ApplicationService(); }); }
+		}
+
+		public void show() {
+			ApplicationState.instance.show();
+		}
+	}
+
 	class ApplicationData : Object {
 		public AppInfo info { get; set; }
 		public string id { get { return info.get_id(); } }
@@ -75,7 +87,7 @@ namespace EinkFriendlyLauncher {
 		}
 
 		public signal void launched();
-
+		public signal void show();
 		public signal void resize();
 		public signal void need_refresh();
 		public signal void refresh_applications();
@@ -388,8 +400,6 @@ namespace EinkFriendlyLauncher {
 	}
 
 	class Application : Gtk.Application {
-		private uint registration_id = 0;
-
 		public Application() {
 			Object(
 				application_id: APP_ID,
@@ -399,8 +409,7 @@ namespace EinkFriendlyLauncher {
 
 		protected override void activate() {
 			var window = new Gtk.ApplicationWindow(this);
-			// TODO: show/hide on dbus method invocation
-			// window.hide_on_close = true;
+			window.hide_on_close = true;
 			window.child = new MainLayout();
 			window.halign = Gtk.Align.FILL;
 			window.valign = Gtk.Align.FILL;
@@ -409,9 +418,29 @@ namespace EinkFriendlyLauncher {
 				window.close();
 			});
 
+			ApplicationState.instance.show.connect(() => {
+				window.show();
+			});
+
 			window.maximize();
 			window.present();
 		}
+
+		public override bool dbus_register(DBusConnection connection, string object_path) throws Error {
+			base.dbus_register(connection, object_path);
+
+			try {
+				connection.register_object(
+					"/%s".printf(APP_ID.replace(".", "/")),
+					ApplicationService.instance
+				);
+			} catch (Error e) {
+				error(e.message);
+			}
+
+			return true;
+		}
+
 
 		public static int main(string[] args) {
 			ApplicationState.instance.refresh_applications();
