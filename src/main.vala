@@ -5,12 +5,6 @@ namespace EinkFriendlyLauncher {
 	const int MINIMUM_ENTRIES = 1;
 	const string APP_ID = "com.samueldr.EinkFriendlyLauncher";
 
-	private ApplicationState state;
-
-	private string config_dir() {
-		return Path.build_filename(Environment.get_user_config_dir(), APP_ID);
-	}
-
 	class ApplicationData : Object {
 		public AppInfo info { get; set; }
 		public string id { get { return info.get_id(); } }
@@ -19,12 +13,12 @@ namespace EinkFriendlyLauncher {
 
 		public bool favorite {
 			get {
-				return state.favorites.contains(id);
+				return ApplicationState.instance.favorites.contains(id);
 			}
 		}
 
 		public void toggle_favorite() {
-			state.toggle_favorite(id);
+			ApplicationState.instance.toggle_favorite(id);
 		}
 
 		public bool is_shown {
@@ -46,11 +40,11 @@ namespace EinkFriendlyLauncher {
 			var parsed_exec = /%./.replace(exec, exec.length, 0, "").strip();
 			debug("Would be launching %s (%s)", name, parsed_exec);
 			debug("  desktop file ID: %s", id);
-			state.launched();
+			ApplicationState.instance.launched();
 			return;
 #endif
 			info.launch(null, null);
-			state.launched();
+			ApplicationState.instance.launched();
 		}
 
 		public static ApplicationData from_appinfo(AppInfo info) {
@@ -62,6 +56,11 @@ namespace EinkFriendlyLauncher {
 	}
 
 	class ApplicationState : Object {
+		private static GLib.Once<ApplicationState> _instance;
+		public static unowned ApplicationState instance {
+			get { return _instance.once(() => { return new ApplicationState(); }); }
+		}
+
 		public int height { get; set; default = 0; }
 		public int current_page { get; set; default = 0; }
 		public int per_page { get; set; default = 1; }
@@ -136,7 +135,7 @@ namespace EinkFriendlyLauncher {
 			else {
 				favorites.add(id);
 			}
-			state.save_userdata();
+			ApplicationState.instance.save_userdata();
 		}
 
 		public void load_userdata() {
@@ -166,6 +165,10 @@ namespace EinkFriendlyLauncher {
 			else {
 				error("Could not open favorites.list for writing");
 			}
+		}
+
+		private string config_dir() {
+			return Path.build_filename(Environment.get_user_config_dir(), APP_ID);
 		}
 	}
 
@@ -216,7 +219,7 @@ namespace EinkFriendlyLauncher {
 			long_press.pressed.connect(() => {
 				long_pressed = true;
 				app.toggle_favorite();
-				state.need_refresh();
+				ApplicationState.instance.need_refresh();
 			});
 			add_controller(long_press);
 		}
@@ -241,11 +244,11 @@ namespace EinkFriendlyLauncher {
 
 			refresh();
 
-			state.need_refresh.connect(() => {
+			ApplicationState.instance.need_refresh.connect(() => {
 				refresh();
 			});
 
-			state.resize.connect(() => {
+			ApplicationState.instance.resize.connect(() => {
 				handle_resize();
 			});
 		}
@@ -258,11 +261,11 @@ namespace EinkFriendlyLauncher {
 		private void refresh() {
 			clear();
 
-			var current_page = state.current_page;
-			var per_page = state.per_page;
-			state.applications.slice(
+			var current_page = ApplicationState.instance.current_page;
+			var per_page = ApplicationState.instance.per_page;
+			ApplicationState.instance.applications.slice(
 				current_page * per_page,
-				int.min((current_page+1) * per_page, state.applications.size)
+				int.min((current_page+1) * per_page, ApplicationState.instance.applications.size)
 			).foreach(
 				(app) => {
 					append(new ApplicationEntry(app));
@@ -275,10 +278,10 @@ namespace EinkFriendlyLauncher {
 
 		public void handle_resize() {
 			// Remove 2*PADDING to fit more when it's barely fitting.
-			var num = state.height - PADDING*-2;
+			var num = ApplicationState.instance.height - PADDING*-2;
 			num = num / (TOUCH_HEIGHT+PADDING);
-			state.per_page = int.max(MINIMUM_ENTRIES, num);
-			state.need_refresh();
+			ApplicationState.instance.per_page = int.max(MINIMUM_ENTRIES, num);
+			ApplicationState.instance.need_refresh();
 		}
 	}
 
@@ -316,24 +319,24 @@ namespace EinkFriendlyLauncher {
 			;
 
 			prev.clicked.connect(() => {
-				state.set_page(-1, true);
+				ApplicationState.instance.set_page(-1, true);
 			});
 			next.clicked.connect(() => {
-				state.set_page(1, true);
+				ApplicationState.instance.set_page(1, true);
 			});
 			pager.clicked.connect(() => {
 			});
 
 			refresh();
 
-			state.need_refresh.connect(() => {
+			ApplicationState.instance.need_refresh.connect(() => {
 				refresh();
 			});
 		}
 
 		private void refresh() {
 			Gtk.Label label = (Gtk.Label)pager.child;
-			label.label = "%d / %d".printf(state.current_page+1, state.total_pages+1);
+			label.label = "%d / %d".printf(ApplicationState.instance.current_page+1, ApplicationState.instance.total_pages+1);
 		}
 	}
 
@@ -371,7 +374,7 @@ namespace EinkFriendlyLauncher {
 			// And is the main child of the overlay...
 			overlay.set_child(size_oracle);
 			size_oracle.resize.connect(() => {
-				state.height = size_oracle.get_height();
+				ApplicationState.instance.height = size_oracle.get_height();
 			});
 
 			// Since we actually want the Gtk widgets for apps,
@@ -385,6 +388,8 @@ namespace EinkFriendlyLauncher {
 	}
 
 	class Application : Gtk.Application {
+		private uint registration_id = 0;
+
 		public Application() {
 			Object(
 				application_id: APP_ID,
@@ -400,7 +405,7 @@ namespace EinkFriendlyLauncher {
 			window.halign = Gtk.Align.FILL;
 			window.valign = Gtk.Align.FILL;
 
-			state.launched.connect(() => {
+			ApplicationState.instance.launched.connect(() => {
 				window.close();
 			});
 
@@ -409,8 +414,7 @@ namespace EinkFriendlyLauncher {
 		}
 
 		public static int main(string[] args) {
-			state = new ApplicationState();
-			state.refresh_applications();
+			ApplicationState.instance.refresh_applications();
 
 			var app = new Application();
 			app.run(args);
