@@ -145,7 +145,7 @@ namespace EinkFriendlyLauncher {
 			FileStream stream = FileStream.open(Path.build_filename(config_dir(), "favorites.list"), "r");
 			if (stream != null) {
 				string? line = null;
-				while ((line = stream.read_line ()) != null) {
+				while ((line = stream.read_line()) != null) {
 					favorites.add(line.strip());
 				}
 			}
