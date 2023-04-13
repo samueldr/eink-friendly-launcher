@@ -423,7 +423,10 @@ namespace EinkFriendlyLauncher {
 			});
 
 			window.maximize();
+#if DONT_SPAWN_PROCESSES
+			debug("Presenting window for development purposes.");
 			window.present();
+#endif
 		}
 
 		public override bool dbus_register(DBusConnection connection, string object_path) throws Error {
