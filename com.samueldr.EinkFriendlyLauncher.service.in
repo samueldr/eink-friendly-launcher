@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=com.samueldr.EinkFriendlyLauncher
+Exec=@bindir@/eink-friendly-launcher
