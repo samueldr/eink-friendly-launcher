@@ -15,6 +15,10 @@ namespace EinkFriendlyLauncher {
 		public void show() {
 			ApplicationState.instance.show();
 		}
+
+		public void toggle_visibility() {
+			ApplicationState.instance.toggle_visibility();
+		}
 	}
 
 	class ApplicationData : Object {
@@ -88,6 +92,7 @@ namespace EinkFriendlyLauncher {
 
 		public signal void launched();
 		public signal void show();
+		public signal void toggle_visibility();
 		public signal void resize();
 		public signal void need_refresh();
 		public signal void refresh_applications();
@@ -420,6 +425,14 @@ namespace EinkFriendlyLauncher {
 
 			ApplicationState.instance.show.connect(() => {
 				window.show();
+			});
+			ApplicationState.instance.toggle_visibility.connect(() => {
+				if (window.visible) {
+					window.close();
+				}
+				else {
+					ApplicationState.instance.show();
+				}
 			});
 
 			window.maximize();
