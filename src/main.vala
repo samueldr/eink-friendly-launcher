@@ -342,6 +342,7 @@ namespace EinkFriendlyLauncher {
 				ApplicationState.instance.set_page(1, true);
 			});
 			pager.clicked.connect(() => {
+				ApplicationState.instance.refresh_applications();
 			});
 
 			refresh();
@@ -424,6 +425,7 @@ namespace EinkFriendlyLauncher {
 			});
 
 			ApplicationState.instance.show.connect(() => {
+				ApplicationState.instance.refresh_applications();
 				window.show();
 				window.maximize();
 			});
