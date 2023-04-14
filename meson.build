@@ -25,12 +25,5 @@ conf.set('bindir', join_paths(get_option('prefix'), 'bin'))
 configure_file(output: 'config.h', configuration: conf)
 config_h_dir = include_directories('.')
 
-configure_file(
-  input: 'com.samueldr.EinkFriendlyLauncher.service.in',
-  output: 'com.samueldr.EinkFriendlyLauncher.service',
-  configuration: conf,
-  install_dir: join_paths(get_option('datadir'), 'dbus-1/services')
-)
-
 # Call subdirs
 subdir('src')
