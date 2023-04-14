@@ -425,6 +425,7 @@ namespace EinkFriendlyLauncher {
 
 			ApplicationState.instance.show.connect(() => {
 				window.show();
+				window.maximize();
 			});
 			ApplicationState.instance.toggle_visibility.connect(() => {
 				if (window.visible) {
