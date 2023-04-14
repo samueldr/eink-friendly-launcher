@@ -213,7 +213,7 @@ namespace EinkFriendlyLauncher {
 			label.hexpand = true;
 			layout.append(label);
 
-			var star = new Gtk.Image.from_icon_name("favorite");
+			var star = new Gtk.Image.from_icon_name("emblem-favorite");
 			star.pixel_size = image.pixel_size / 2;
 			layout.append(star);
 
