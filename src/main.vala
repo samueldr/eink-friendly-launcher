@@ -295,7 +295,7 @@ namespace EinkFriendlyLauncher {
 			// Remove 2*PADDING to fit more when it's barely fitting.
 			var num = ApplicationState.instance.height - PADDING*-2;
 			num = num / (TOUCH_HEIGHT+PADDING);
-			ApplicationState.instance.per_page = int.max(MINIMUM_ENTRIES, num);
+			ApplicationState.instance.per_page = int.max(MINIMUM_ENTRIES-1, num);
 			ApplicationState.instance.need_refresh();
 		}
 	}
@@ -368,13 +368,14 @@ namespace EinkFriendlyLauncher {
 		}
 
 		construct {
+			vexpand = true;
+			hexpand = true;
 			halign = Gtk.Align.FILL;
 			valign = Gtk.Align.FILL;
 
-			apps = new ApplicationsList();
-
 			var overlay = new Gtk.Overlay(){
 				vexpand = true,
+				hexpand = true,
 				halign = Gtk.Align.FILL,
 				valign = Gtk.Align.FILL
 			};
@@ -383,10 +384,10 @@ namespace EinkFriendlyLauncher {
 			// This widget snitches on resize events.
 			var size_oracle = new Gtk.DrawingArea(){
 				vexpand = true,
+				hexpand = true,
 				halign = Gtk.Align.FILL,
 				valign = Gtk.Align.FILL
 			};
-			size_oracle.height_request = MINIMUM_ENTRIES * (TOUCH_HEIGHT+PADDING);
 			// And is the main child of the overlay...
 			overlay.set_child(size_oracle);
 			size_oracle.resize.connect(() => {
@@ -394,14 +395,23 @@ namespace EinkFriendlyLauncher {
 				ApplicationState.instance.width = size_oracle.get_width();
 				ApplicationState.instance.resize();
 			});
+			size_oracle.resize(0, 0);
 
-			// Since we actually want the Gtk widgets for apps,
-			// let's draw ours on top!
-			overlay.add_overlay(apps);
+			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0){
+				halign = Gtk.Align.FILL,
+				valign = Gtk.Align.FILL
+			};
+
+			// Since we actually want the Gtk widgets for our app,
+			// let's draw ours on top of the snitch!
+			overlay.add_overlay(box);
+
+			apps = new ApplicationsList();
+			box.append(apps);
 
 			// Don't forget the navigation.
 			navigation = new NavBar();
-			append(navigation);
+			box.append(navigation);
 		}
 	}
 
