@@ -25,5 +25,12 @@ conf.set('bindir', join_paths(get_option('prefix'), 'bin'))
 configure_file(output: 'config.h', configuration: conf)
 config_h_dir = include_directories('.')
 
+configure_file(
+  input: 'com.samueldr.EinkFriendlyLauncher.desktop.in',
+  output: 'com.samueldr.EinkFriendlyLauncher.desktop',
+  configuration: conf,
+  install_dir: join_paths(get_option('sysconfdir'), 'xdg/autostart')
+)
+
 # Call subdirs
 subdir('src')
