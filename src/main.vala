@@ -1,9 +1,16 @@
 namespace EinkFriendlyLauncher {
-	const int NEXT_PREV_WEIGHT = 4;
-	const int PADDING = 12;
-	const int TOUCH_HEIGHT = 128;
-	const int MINIMUM_ENTRIES = 1;
 	const string APP_ID = "com.samueldr.EinkFriendlyLauncher";
+
+	// Weight of the navigation buttons compared to the pager
+	const int NEXT_PREV_WEIGHT = 4;
+	// Amount of lines the app should aim to take (navigation takes a line; inexact)
+	const int TARGET_ENTRIES_COUNT = 12;
+	// Stepping at which the sizes are increased
+	const int SIZE_GRANULARITY = 16;
+	// Minimum dimensions for the window (width and height)
+	const int MINIMUM_SIZE = 656;
+	// Value the line height is divided by to get the padding
+	const int PADDING_RATIO = 8;
 
 	[DBus (name="com.samueldr.EinkFriendlyLauncher")]
 	class ApplicationService : Object {
@@ -79,6 +86,8 @@ namespace EinkFriendlyLauncher {
 
 		public int height { get; set; default = 0; }
 		public int width { get; set; default = 0; }
+		public int padding { get; set; default = 0; }
+		public int line_height { get; set; default = 0; }
 		public int current_page { get; set; default = 0; }
 		public int per_page { get; set; default = 1; }
 		public Gee.ArrayList<ApplicationData> applications { get; set; default = new Gee.ArrayList<ApplicationData>(); }
@@ -197,13 +206,13 @@ namespace EinkFriendlyLauncher {
 		construct {
 			halign = Gtk.Align.FILL;
 			valign = Gtk.Align.FILL;
-			height_request = TOUCH_HEIGHT;
+			height_request = ApplicationState.instance.line_height;
 			has_frame = false;
 
-			var layout = new Gtk.Box(Gtk.Orientation.HORIZONTAL, PADDING);
+			var layout = new Gtk.Box(Gtk.Orientation.HORIZONTAL, ApplicationState.instance.padding);
 			layout.hexpand = true;
 			var image = new Gtk.Image.from_icon_name(app.info.get_icon().to_string());
-			image.pixel_size = TOUCH_HEIGHT - TOUCH_HEIGHT/4;
+			image.pixel_size = ApplicationState.instance.line_height - ApplicationState.instance.line_height/4;
 			layout.append(image);
 
 			var label = new Gtk.Label(app.name);
@@ -244,17 +253,13 @@ namespace EinkFriendlyLauncher {
 		public ApplicationsList() {
 			Object(
 				orientation: Gtk.Orientation.VERTICAL,
-				spacing: PADDING
+				spacing: 0
 			);
 		}
 		construct {
 			overflow = Gtk.Overflow.HIDDEN;
 			halign = Gtk.Align.FILL;
 			valign = Gtk.Align.FILL;
-			margin_top = PADDING;
-			margin_bottom = PADDING;
-			margin_start = PADDING;
-			margin_end = PADDING;
 			vexpand = true;
 
 			refresh();
@@ -292,10 +297,15 @@ namespace EinkFriendlyLauncher {
 		}
 
 		public void handle_resize() {
-			// Remove 2*PADDING to fit more when it's barely fitting.
-			var num = ApplicationState.instance.height - PADDING*-2;
-			num = num / (TOUCH_HEIGHT+PADDING);
-			ApplicationState.instance.per_page = int.max(MINIMUM_ENTRIES-1, num);
+			margin_top = ApplicationState.instance.padding;
+			margin_bottom = ApplicationState.instance.padding;
+			margin_start = ApplicationState.instance.padding;
+			margin_end = ApplicationState.instance.padding;
+			spacing = ApplicationState.instance.padding;
+
+			var num = ApplicationState.instance.height - ApplicationState.instance.padding*4 - ApplicationState.instance.line_height+ApplicationState.instance.padding*2;
+			num = num / (ApplicationState.instance.line_height+ApplicationState.instance.padding);
+			ApplicationState.instance.per_page = num;
 			ApplicationState.instance.need_refresh();
 		}
 	}
@@ -309,13 +319,9 @@ namespace EinkFriendlyLauncher {
 			halign = Gtk.Align.FILL;
 			valign = Gtk.Align.END;
 			column_homogeneous = true;
-			margin_bottom = PADDING;
-			margin_start = PADDING;
-			margin_end = PADDING;
 
 			pager = new Gtk.Button.with_label("...");
 			pager.has_frame = false;
-			pager.height_request = TOUCH_HEIGHT;
 			attach(pager, NEXT_PREV_WEIGHT+1, 1);
 
 			prev = new Gtk.Button.with_label("Previous");
@@ -341,6 +347,12 @@ namespace EinkFriendlyLauncher {
 			});
 			pager.clicked.connect(() => {
 				ApplicationState.instance.refresh_applications();
+			});
+			ApplicationState.instance.resize.connect(() => {
+				margin_bottom = ApplicationState.instance.padding;
+				margin_start = ApplicationState.instance.padding;
+				margin_end = ApplicationState.instance.padding;
+				pager.height_request = ApplicationState.instance.line_height;
 			});
 
 			refresh();
@@ -388,11 +400,19 @@ namespace EinkFriendlyLauncher {
 				halign = Gtk.Align.FILL,
 				valign = Gtk.Align.FILL
 			};
+			// This sets the minimum dimensions for the app
+			size_oracle.height_request = MINIMUM_SIZE;
+			size_oracle.width_request = MINIMUM_SIZE;
+
 			// And is the main child of the overlay...
 			overlay.set_child(size_oracle);
 			size_oracle.resize.connect(() => {
 				ApplicationState.instance.height = size_oracle.get_height();
 				ApplicationState.instance.width = size_oracle.get_width();
+				ApplicationState.instance.line_height = int.min(ApplicationState.instance.height, ApplicationState.instance.width) / TARGET_ENTRIES_COUNT;
+				ApplicationState.instance.line_height = ApplicationState.instance.line_height / SIZE_GRANULARITY * SIZE_GRANULARITY;
+				ApplicationState.instance.padding = ApplicationState.instance.line_height / PADDING_RATIO;
+
 				ApplicationState.instance.resize();
 			});
 			size_oracle.resize(0, 0);
