@@ -78,6 +78,7 @@ namespace EinkFriendlyLauncher {
 		}
 
 		public int height { get; set; default = 0; }
+		public int width { get; set; default = 0; }
 		public int current_page { get; set; default = 0; }
 		public int per_page { get; set; default = 1; }
 		public Gee.ArrayList<ApplicationData> applications { get; set; default = new Gee.ArrayList<ApplicationData>(); }
@@ -100,9 +101,6 @@ namespace EinkFriendlyLauncher {
 		public ApplicationState() {
 			notify["current-page"].connect(() => {
 				need_refresh();
-			});
-			notify["height"].connect(() => {
-				resize();
 			});
 			refresh_applications.connect(() => {
 				_refresh_applications();
@@ -393,6 +391,8 @@ namespace EinkFriendlyLauncher {
 			overlay.set_child(size_oracle);
 			size_oracle.resize.connect(() => {
 				ApplicationState.instance.height = size_oracle.get_height();
+				ApplicationState.instance.width = size_oracle.get_width();
+				ApplicationState.instance.resize();
 			});
 
 			// Since we actually want the Gtk widgets for apps,
